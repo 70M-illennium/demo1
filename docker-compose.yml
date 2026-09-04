@@ -1,0 +1,95 @@
+services:
+  # --- the database being monitored (the "target") ---
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-demo-container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ADMIN}
+      MYSQL_DATABASE: myDB
+      MYSQL_USER: ${USERNAME}
+      MYSQL_PASSWORD: ${PWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/01-mysql-init.sql:ro
+      - ./docker/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    # slow_query_log + a low long_query_time make the "slow queries" and
+    # "query performance" endpoints show real data out of the box in a demo.
+    command:
+      - --slow_query_log=1
+      - --long_query_time=0.2
+      - --performance_schema=ON
+    healthcheck:
+      # -h 127.0.0.1 forces TCP: during first-boot init MySQL runs a socket-only
+      # temp server that would answer a "localhost" ping before the real port is open.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ADMIN}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # --- the monitor's own history database (kept separate so a problem on the
+  #     monitored server cannot stop the monitor from recording it) ---
+  monitor-store:
+    image: mysql:8.0
+    container_name: monitor-store-container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${STORE_ROOT_PASSWORD}
+      MYSQL_DATABASE: monitor
+      MYSQL_USER: ${STORE_USER}
+      MYSQL_PASSWORD: ${STORE_PASSWORD}
+    ports:
+      - "3307:3306"          # inspect the history DB from the host on 3307
+    volumes:
+      - monitor_store_data:/var/lib/mysql
+    command:
+      - --innodb-buffer-pool-size=64M   # this one only stores our snapshots; keep it light
+    healthcheck:
+      # -h 127.0.0.1 forces TCP so the check only passes once the real server (not the
+      # socket-only first-boot init server) is accepting network connections.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${STORE_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: db-health-monitor-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      monitor-store:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # storage (Spring/JPA primary datasource) -> the monitor's own history DB
+      SPRING_DATASOURCE_URL: jdbc:mysql://monitor-store:3306/monitor?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${STORE_USER}
+      SPRING_DATASOURCE_PASSWORD: ${STORE_PASSWORD}
+      # target (read-only, monitored) -> the mysql service above
+      MONITOR_TARGET_DATASOURCE_URL: jdbc:mysql://mysql:3306/myDB?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000&socketTimeout=5000
+      MONITOR_TARGET_DATASOURCE_USERNAME: ${USERNAME}
+      MONITOR_TARGET_DATASOURCE_PASSWORD: ${PWORD}
+
+  # --- optional workload generator; only with `docker compose --profile demo up` ---
+  loadgen:
+    image: mysql:8.0
+    container_name: demo-loadgen
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./docker/loadgen.sh:/loadgen.sh:ro
+    entrypoint: ["bash", "/loadgen.sh"]
+    profiles: ["demo"]
+
+volumes:
+  mysql_data:
+  monitor_store_data:
