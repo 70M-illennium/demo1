@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -21,8 +22,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ActivitySnapshotService {
 
+    private static final Duration LATEST_CACHE_TTL = Duration.ofSeconds(60);   // matches the capture() cadence
+
     private final ActivitySnapshotRepo activitySnapshotRepo;
     private final SnapshotWriteBuffer writeBuffer;
+    private final MetricCache metricCache;
 
     private final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 
@@ -31,7 +35,8 @@ public class ActivitySnapshotService {
     /** The most recent activity snapshot, or empty if none has been collected yet. */
     @Transactional(readOnly = true)
     public Optional<ActivitySnapshotEntity> latestSnapshot() {
-        return activitySnapshotRepo.findFirstByOrderByTimestampDesc();
+        return metricCache.getOrLoad("activity.latest", LATEST_CACHE_TTL,
+                activitySnapshotRepo::findFirstByOrderByTimestampDesc);
     }
 
     /** The most recent {@code limit} activity snapshots, newest first. */

@@ -45,5 +45,13 @@ public enum EventType {
      * An Error/Warning line seen in the target's {@code performance_schema.error_log}.
      * Point-in-time: {@code occurredAt} = {@code resolvedAt} = the log timestamp.
      */
-    TARGET_ERROR_LOG
+    TARGET_ERROR_LOG,
+
+    /**
+     * One or more tracked GLOBAL VARIABLES changed value since the previous config
+     * snapshot. Point-in-time: {@code occurredAt} = {@code resolvedAt} = the moment the
+     * change was observed - a config change is a fact about the past, not an ongoing
+     * problem the checker should keep re-evaluating.
+     */
+    CONFIG_CHANGED
 }

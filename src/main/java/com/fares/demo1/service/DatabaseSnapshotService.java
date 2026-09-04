@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -23,8 +24,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DatabaseSnapshotService {
 
+    private static final Duration LATEST_CACHE_TTL = Duration.ofSeconds(60);   // matches the capture() cadence
+
     private final DatabaseSnapshotRepo databaseSnapshotRepo;
     private final SnapshotWriteBuffer writeBuffer;
+    private final MetricCache metricCache;
 
     /** Bound to the monitored database, not the history store. */
     @Qualifier("targetJdbcTemplate")
@@ -32,10 +36,16 @@ public class DatabaseSnapshotService {
 
     // ---------- reads for the API ----------
 
-    /** The most recent snapshot, or empty if none has been collected yet. */
+    /**
+     * The most recent snapshot, or empty if none has been collected yet. Goes through
+     * {@link MetricCache} under the key {@code "database.latest"} - whether this
+     * actually hits the cache or the repo on any given call depends on the live
+     * {@code EndpointPolicyRegistry} flag for that key, checked at call time.
+     */
     @Transactional(readOnly = true)
     public Optional<DatabaseSnapshotEntity> latestSnapshot() {
-        return databaseSnapshotRepo.findFirstByOrderByTimestampDesc();
+        return metricCache.getOrLoad("database.latest", LATEST_CACHE_TTL,
+                databaseSnapshotRepo::findFirstByOrderByTimestampDesc);
     }
 
     /** The most recent {@code limit} snapshots, newest first. */

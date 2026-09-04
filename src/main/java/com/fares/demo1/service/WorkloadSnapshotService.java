@@ -16,7 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -37,14 +39,63 @@ public class WorkloadSnapshotService {
     private static final int TOP_DIGESTS = 25;
     private static final int TOP_WAITS = 15;
 
+    // queries/sessions/waits come from capture() (60s cadence); tables from
+    // captureTableSizes() (10 min cadence) - each cache TTL matches its own collector.
+    private static final Duration CAPTURE_CACHE_TTL = Duration.ofSeconds(60);
+    private static final Duration TABLE_SIZE_CACHE_TTL = Duration.ofMinutes(10);
+
     private final QueryDigestSampleRepo queryDigestSampleRepo;
     private final SessionSampleRepo sessionSampleRepo;
     private final WaitSampleRepo waitSampleRepo;
     private final TableSizeSampleRepo tableSizeSampleRepo;
     private final SnapshotWriteBuffer writeBuffer;
+    private final MetricCache metricCache;
 
     @Qualifier("targetJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+
+    // ---------- reads for the API ----------
+
+    /**
+     * The top query digests from the most recent cycle. Goes through {@link
+     * MetricCache} under {@code "workload.queries"}.
+     */
+    @Transactional(readOnly = true)
+    public List<QueryDigestSample> latestDigests() {
+        return metricCache.getOrLoad("workload.queries", CAPTURE_CACHE_TTL, queryDigestSampleRepo::findLatestCycle);
+    }
+
+    /**
+     * Live (non-idle) sessions from the most recent cycle. Goes through {@link
+     * MetricCache} under {@code "workload.sessions"} - but that key defaults to
+     * {@code cached=false} in {@code EndpointPolicyRegistry} (live activity, a stale
+     * answer defeats the point), so in practice this bypasses the cache unless an
+     * admin explicitly turns it on.
+     */
+    @Transactional(readOnly = true)
+    public List<SessionSample> latestSessions() {
+        return metricCache.getOrLoad("workload.sessions", CAPTURE_CACHE_TTL, sessionSampleRepo::findLatestCycle);
+    }
+
+    /**
+     * The top wait events from the most recent cycle. Goes through {@link MetricCache}
+     * under {@code "workload.waits"}.
+     */
+    @Transactional(readOnly = true)
+    public List<WaitSample> latestWaits() {
+        return metricCache.getOrLoad("workload.waits", CAPTURE_CACHE_TTL, waitSampleRepo::findLatestCycle);
+    }
+
+    /**
+     * Per-table sizes from the most recent (10-minute) cycle. Goes through {@link
+     * MetricCache} under {@code "workload.tables"}.
+     */
+    @Transactional(readOnly = true)
+    public List<TableSizeSample> latestTableSizes() {
+        return metricCache.getOrLoad("workload.tables", TABLE_SIZE_CACHE_TTL, tableSizeSampleRepo::findLatestCycle);
+    }
+
+    // ---------- collection ----------
 
     @Scheduled(fixedRate = 60_000, initialDelay = 12_000)   // 60s, offset from the other collectors
     public void capture() {

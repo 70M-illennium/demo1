@@ -160,9 +160,9 @@ public class HealthCheckService {
         } else if (breached.get(0)) {
             event.setLastSeenAt(now);
             event.setMetricValue(result.value());
+            event.setMessage(result.message());
             if (result.severity().ordinal() > event.getSeverity().ordinal()) {   // e.g. warn -> crit
                 event.setSeverity(result.severity());
-                event.setMessage(result.message());
             }
             monitorEventRepo.save(event);
         }

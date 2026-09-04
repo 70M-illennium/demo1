@@ -10,7 +10,9 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,11 +31,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityCheckService {
 
+    private static final Duration LATEST_CACHE_TTL = Duration.ofMinutes(10);   // matches the check() cadence
+
     private final SecurityFindingRepo securityFindingRepo;
     private final SnapshotWriteBuffer writeBuffer;
+    private final MetricCache metricCache;
 
     @Qualifier("targetJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+
+    // ---------- reads for the API ----------
+
+    /** Every finding from the most recent check cycle. Goes through {@link MetricCache} under {@code "security.findings"}. */
+    @Transactional(readOnly = true)
+    public List<SecurityFinding> latestFindings() {
+        return metricCache.getOrLoad("security.findings", LATEST_CACHE_TTL, securityFindingRepo::findLatestCycle);
+    }
+
+    // ---------- collection ----------
 
     @Scheduled(fixedRate = 600_000, initialDelay = 35_000)   // every 10 min
     public void check() {

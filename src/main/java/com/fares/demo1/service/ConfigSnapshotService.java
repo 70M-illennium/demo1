@@ -2,8 +2,12 @@ package com.fares.demo1.service;
 
 import com.fares.demo1.model.ConfigSnapshotEntity;
 import com.fares.demo1.model.ConfigValueSample;
+import com.fares.demo1.model.EventType;
+import com.fares.demo1.model.MonitorEventEntity;
+import com.fares.demo1.model.Severity;
 import com.fares.demo1.repo.ConfigSnapshotRepo;
 import com.fares.demo1.repo.ConfigValueSampleRepo;
+import com.fares.demo1.repo.MonitorEventRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -14,6 +18,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,17 +45,30 @@ public class ConfigSnapshotService {
             "max_allowed_packet", "table_open_cache", "tmp_table_size",
             "local_infile", "require_secure_transport", "skip_name_resolve", "sql_mode");
 
+    private static final Duration LATEST_CACHE_TTL = Duration.ofSeconds(60);   // matches the capture() cadence
+
     private final ConfigSnapshotRepo configSnapshotRepo;
     private final ConfigValueSampleRepo configValueSampleRepo;
+    private final MonitorEventRepo monitorEventRepo;
+    private final Notifier notifier;
+    private final MetricCache metricCache;
 
     @Qualifier("targetJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
 
     // ---------- reads for the API ----------
 
+    /**
+     * The current tracked config, or empty if none collected yet. Only the header
+     * lookup goes through {@link MetricCache} under {@code "config.latest"} -
+     * {@link #valuesOf} still queries fresh every call, since it takes the already-
+     * resolved snapshot as input rather than being a second independent lookup this
+     * cache key was meant to cover.
+     */
     @Transactional(readOnly = true)
     public Optional<ConfigSnapshotEntity> latestSnapshot() {
-        return configSnapshotRepo.findFirstByOrderByTimestampDesc();
+        return metricCache.getOrLoad("config.latest", LATEST_CACHE_TTL,
+                configSnapshotRepo::findFirstByOrderByTimestampDesc);
     }
 
     @Transactional(readOnly = true)
@@ -99,10 +117,34 @@ public class ConfigSnapshotService {
         }).toList();
         configValueSampleRepo.saveAll(rows);
 
-        long changed = current.entrySet().stream()
+        List<String> diffs = current.entrySet().stream()
                 .filter(e -> !e.getValue().equals(previous.get(e.getKey())))
-                .count();
-        log.info("Config snapshot saved: {} tracked variables, {} changed", rows.size(), changed);
+                .map(e -> e.getKey() + " " + previous.getOrDefault(e.getKey(), "(unset)") + " -> " + e.getValue())
+                .toList();
+        log.info("Config snapshot saved: {} tracked variables, {} changed", rows.size(), diffs.size());
+
+        // The very first snapshot ever taken has an empty `previous` map, so every
+        // tracked variable looks "changed" - that's establishing a baseline, not a
+        // config change worth an event. Only raise CONFIG_CHANGED from the second
+        // snapshot onward.
+        if (!previous.isEmpty() && !diffs.isEmpty()) {
+            raiseConfigChangedEvent(diffs);
+        }
+    }
+
+    private void raiseConfigChangedEvent(List<String> diffs) {
+        Instant now = Instant.now();
+        MonitorEventEntity event = new MonitorEventEntity();
+        event.setType(EventType.CONFIG_CHANGED);
+        event.setSeverity(Severity.WARNING);
+        event.setMessage(diffs.size() + " tracked config value(s) changed: "
+                + String.join(", ", diffs));
+        event.setMetricValue((double) diffs.size());
+        event.setOccurredAt(now);
+        event.setLastSeenAt(now);
+        event.setResolvedAt(now);   // a config change is a fact about the past, not an ongoing state
+        monitorEventRepo.save(event);
+        notifier.onOpened(event);
     }
 
     private Map<String, String> readTrackedVariables() {

@@ -76,6 +76,9 @@ services:
       MONITOR_TARGET_DATASOURCE_URL: jdbc:mysql://mysql:3306/myDB?useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=3000&socketTimeout=5000
       MONITOR_TARGET_DATASOURCE_USERNAME: ${USERNAME}
       MONITOR_TARGET_DATASOURCE_PASSWORD: ${PWORD}
+      # the one ADMIN account for non-GET /api/** endpoints
+      MONITOR_ADMIN_USERNAME: ${MONITOR_ADMIN_USERNAME}
+      MONITOR_ADMIN_PASSWORD: ${MONITOR_ADMIN_PASSWORD}
 
   # --- optional workload generator; only with `docker compose --profile demo up` ---
   loadgen:

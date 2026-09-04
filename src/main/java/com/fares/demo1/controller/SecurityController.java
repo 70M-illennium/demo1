@@ -2,7 +2,7 @@ package com.fares.demo1.controller;
 
 import com.fares.demo1.dto.SecurityFindingResponseDTO;
 import com.fares.demo1.model.SecurityFinding;
-import com.fares.demo1.repo.SecurityFindingRepo;
+import com.fares.demo1.service.SecurityCheckService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,11 +25,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityController {
 
-    private final SecurityFindingRepo securityFindingRepo;
+    private final SecurityCheckService securityCheckService;
 
     @GetMapping("/findings")
     public List<SecurityFindingResponseDTO> findings() {
-        return securityFindingRepo.findLatestCycle().stream()
+        return securityCheckService.latestFindings().stream()
                 .sorted(Comparator.comparing(SecurityFinding::getSeverity).reversed())
                 .map(SecurityFindingResponseDTO::from)
                 .toList();

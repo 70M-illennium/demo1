@@ -19,7 +19,9 @@ public record MonitorEventResponseDTO(
         Instant occurredAt,
         Instant lastSeenAt,
         Instant resolvedAt,
-        boolean active
+        boolean active,
+        boolean acknowledged,
+        String ackNote
 ) {
 
     public static MonitorEventResponseDTO from(MonitorEventEntity e) {
@@ -32,7 +34,9 @@ public record MonitorEventResponseDTO(
                 e.getOccurredAt(),
                 e.getLastSeenAt(),
                 e.getResolvedAt(),
-                e.getResolvedAt() == null
+                e.getResolvedAt() == null,
+                e.isAcknowledged(),
+                e.getAckNote()
         );
     }
 }

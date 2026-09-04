@@ -4,10 +4,7 @@ import com.fares.demo1.dto.QueryDigestResponseDTO;
 import com.fares.demo1.dto.SessionResponseDTO;
 import com.fares.demo1.dto.TableSizeResponseDTO;
 import com.fares.demo1.dto.WaitResponseDTO;
-import com.fares.demo1.repo.QueryDigestSampleRepo;
-import com.fares.demo1.repo.SessionSampleRepo;
-import com.fares.demo1.repo.TableSizeSampleRepo;
-import com.fares.demo1.repo.WaitSampleRepo;
+import com.fares.demo1.service.WorkloadSnapshotService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,35 +27,32 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkloadController {
 
-    private final QueryDigestSampleRepo queryDigestSampleRepo;
-    private final SessionSampleRepo sessionSampleRepo;
-    private final WaitSampleRepo waitSampleRepo;
-    private final TableSizeSampleRepo tableSizeSampleRepo;
+    private final WorkloadSnapshotService workloadSnapshotService;
 
     @GetMapping("/queries")
     public List<QueryDigestResponseDTO> queries() {
-        return queryDigestSampleRepo.findLatestCycle().stream()
+        return workloadSnapshotService.latestDigests().stream()
                 .map(QueryDigestResponseDTO::from)
                 .toList();
     }
 
     @GetMapping("/sessions")
     public List<SessionResponseDTO> sessions() {
-        return sessionSampleRepo.findLatestCycle().stream()
+        return workloadSnapshotService.latestSessions().stream()
                 .map(SessionResponseDTO::from)
                 .toList();
     }
 
     @GetMapping("/waits")
     public List<WaitResponseDTO> waits() {
-        return waitSampleRepo.findLatestCycle().stream()
+        return workloadSnapshotService.latestWaits().stream()
                 .map(WaitResponseDTO::from)
                 .toList();
     }
 
     @GetMapping("/tables")
     public List<TableSizeResponseDTO> tables() {
-        return tableSizeSampleRepo.findLatestCycle().stream()
+        return workloadSnapshotService.latestTableSizes().stream()
                 .map(TableSizeResponseDTO::from)
                 .toList();
     }

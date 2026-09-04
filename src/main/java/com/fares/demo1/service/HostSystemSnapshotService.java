@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -21,18 +22,26 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class HostSystemSnapshotService {
 
+    private static final Duration LATEST_CACHE_TTL = Duration.ofSeconds(60);   // matches the capture() cadence
+
     private final HostSystemSnapshotRepo hostSystemSnapshotRepo;
     private final SnapshotWriteBuffer writeBuffer;
+    private final MetricCache metricCache;
 
     private final OperatingSystemMXBean osBean =
             (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 
     // ---------- reads for the API ----------
 
-    /** The most recent host snapshot, or empty if none has been collected yet. */
+    /**
+     * The most recent host snapshot, or empty if none has been collected yet. Goes
+     * through {@link MetricCache} under the key {@code "host.latest"} - see {@code
+     * DatabaseSnapshotService.latestSnapshot()} for why this isn't {@code @Cacheable}.
+     */
     @Transactional(readOnly = true)
     public Optional<HostSystemSnapshotEntity> latestSnapshot() {
-        return hostSystemSnapshotRepo.findFirstByOrderByTimestampDesc();
+        return metricCache.getOrLoad("host.latest", LATEST_CACHE_TTL,
+                hostSystemSnapshotRepo::findFirstByOrderByTimestampDesc);
     }
 
     /** The most recent {@code limit} host snapshots, newest first. */

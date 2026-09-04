@@ -6,8 +6,8 @@ import java.time.Instant;
 
 /**
  * API view of one table's size from the latest cycle. {@code fragmentationPct} is
- * {@code dataFree / (data + index)} - a high value means an {@code OPTIMIZE TABLE}
- * would reclaim space.
+ * {@code dataFree / (data + index + dataFree)} - the fraction of the tablespace that is
+ * unused free space - a high value means an {@code OPTIMIZE TABLE} would reclaim space.
  */
 public record TableSizeResponseDTO(
         Instant capturedAt,
@@ -26,8 +26,9 @@ public record TableSizeResponseDTO(
 
     public static TableSizeResponseDTO from(TableSizeSample s) {
         long total = s.getDataBytes() + s.getIndexBytes();
-        double frag = total > 0
-                ? Math.round((double) s.getDataFreeBytes() / total * 10000.0) / 100.0
+        long tablespace = total + s.getDataFreeBytes();
+        double frag = tablespace > 0
+                ? Math.round((double) s.getDataFreeBytes() / tablespace * 10000.0) / 100.0
                 : 0.0;
         return new TableSizeResponseDTO(
                 s.getCapturedAt(),

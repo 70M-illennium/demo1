@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -55,4 +56,26 @@ public class MonitorEventEntity {
 
     /** When the condition met the "resolve" rule; null while the event is active. */
     private Instant resolvedAt;
+
+    // Optimistic locking for the eventual admin-write endpoints (e.g. acknowledging an
+    // alert): protects against two concurrent writers silently overwriting each other -
+    // Hibernate checks this on save and rejects a stale write with
+    // ObjectOptimisticLockingFailureException instead of applying it blind.
+    // columnDefinition (same trick as type/severity above) gives it a default so
+    // ddl-auto=update can add the column to a table that already has rows.
+    @Version
+    @Column(columnDefinition = "bigint not null default 0")
+    @Setter(AccessLevel.NONE)
+    private long version;
+
+    // Admin-driven, independent of resolvedAt: an admin can acknowledge an event ("seen
+    // it, handling it") without the underlying condition having actually cleared - the
+    // checker keeps evaluating and can still escalate or auto-resolve it either way.
+    // columnDefinition gives it a default so ddl-auto=update can add it to a table that
+    // already has rows (same trick as type/severity/version above).
+    @Column(columnDefinition = "boolean not null default false")
+    private boolean acknowledged;
+
+    /** Optional free-text left by whoever acknowledged the event. Null until acked. */
+    private String ackNote;
 }
