@@ -39,10 +39,11 @@ public class GetWorkloadSummaryTool implements AgentTool {
 
     @Override
     public String description() {
-        return "The most recent workload snapshot: top query digests by time, live "
-                + "(non-idle) sessions, top wait events, and per-table sizes. Use for "
-                + "questions about slow queries, blocking sessions, or what the database "
-                + "is spending its time on.";
+        return "The most recent workload snapshot: top query digests by time, "
+                + "non-idle sessions AS OF THE LAST SCHEDULED SNAPSHOT (up to 60s old), "
+                + "top wait events, and per-table sizes. Use for questions about slow "
+                + "queries or what the database is spending its time on overall. For "
+                + "'what is running right now', use get_current_active_queries instead.";
     }
 
     @Override

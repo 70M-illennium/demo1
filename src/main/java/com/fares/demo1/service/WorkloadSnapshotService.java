@@ -78,6 +78,17 @@ public class WorkloadSnapshotService {
     }
 
     /**
+     * Live (non-idle) sessions read directly from the target right now, not from
+     * history. Unlike {@link #latestSessions()}, which returns whatever the last
+     * 60-second scheduled {@link #capture()} caught, this runs the same {@code
+     * PROCESSLIST} query at call time - not cached, not persisted, since it's a
+     * point-in-time answer to "what's running right now", not a snapshot worth keeping.
+     */
+    public List<SessionSample> currentActiveQueries() {
+        return readSessions(Instant.now());
+    }
+
+    /**
      * The top wait events from the most recent cycle. Goes through {@link MetricCache}
      * under {@code "workload.waits"}.
      */
