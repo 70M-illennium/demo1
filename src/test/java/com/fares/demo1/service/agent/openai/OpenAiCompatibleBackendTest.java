@@ -45,7 +45,7 @@ class OpenAiCompatibleBackendTest {
                         {"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        AgentMessage answer = backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        AgentMessage answer = backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         assertThat(answer.content()).isEqualTo("ok");
         mockServer.verify();
@@ -60,7 +60,7 @@ class OpenAiCompatibleBackendTest {
                         {"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         mockServer.verify();
     }
@@ -77,7 +77,7 @@ class OpenAiCompatibleBackendTest {
                         {"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         mockServer.verify();
     }
@@ -94,7 +94,7 @@ class OpenAiCompatibleBackendTest {
                         {"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool));
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool), true);
 
         mockServer.verify();
     }
@@ -109,7 +109,7 @@ class OpenAiCompatibleBackendTest {
                         "finish_reason":"tool_calls"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        AgentMessage answer = backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        AgentMessage answer = backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         assertThat(answer.content()).isNull();
         assertThat(answer.toolCalls()).hasSize(1);
@@ -117,6 +117,56 @@ class OpenAiCompatibleBackendTest {
         assertThat(call.id()).isEqualTo("call-1");
         assertThat(call.name()).isEqualTo("get_thing");
         assertThat(call.argumentsJson()).isEqualTo("{\"limit\":3}");
+        mockServer.verify();
+    }
+
+    @Test
+    void toolsAllowed_omitsJsonModeAndToolChoice_evenWithToolsOffered() {
+        OpenAiCompatibleBackend backend = backendWith(null);
+        ToolDefinition tool = new ToolDefinition("get_thing", "gets a thing", Map.of("type", "object"));
+        mockServer.expect(requestTo("http://backend.test/v1/chat/completions"))
+                .andExpect(jsonPath("$.response_format").doesNotExist())
+                .andExpect(jsonPath("$.tool_choice").doesNotExist())
+                .andExpect(jsonPath("$.tools[0].function.name").value("get_thing"))
+                .andRespond(withSuccess("""
+                        {"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool), true);
+
+        mockServer.verify();
+    }
+
+    @Test
+    void toolsNotAllowed_enablesJsonModeAndToolChoiceNone_butKeepsToolsDeclared() {
+        OpenAiCompatibleBackend backend = backendWith(null);
+        ToolDefinition tool = new ToolDefinition("get_thing", "gets a thing", Map.of("type", "object"));
+        mockServer.expect(requestTo("http://backend.test/v1/chat/completions"))
+                .andExpect(jsonPath("$.response_format.type").value("json_object"))
+                .andExpect(jsonPath("$.tool_choice").value("none"))
+                .andExpect(jsonPath("$.tools[0].function.name").value("get_thing"))
+                .andRespond(withSuccess("""
+                        {"choices":[{"message":{"role":"assistant","content":"{}"},"finish_reason":"stop"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool), false);
+
+        mockServer.verify();
+    }
+
+    @Test
+    void toolsNotAllowed_withNoToolsRegisteredAtAll_omitsBothToolsFieldAndToolChoice() {
+        OpenAiCompatibleBackend backend = backendWith(null);
+        mockServer.expect(requestTo("http://backend.test/v1/chat/completions"))
+                .andExpect(jsonPath("$.response_format.type").value("json_object"))
+                .andExpect(jsonPath("$.tool_choice").doesNotExist())
+                .andExpect(jsonPath("$.tools").doesNotExist())
+                .andRespond(withSuccess("""
+                        {"choices":[{"message":{"role":"assistant","content":"{}"},"finish_reason":"stop"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(), false);
+
         mockServer.verify();
     }
 
@@ -132,7 +182,7 @@ class OpenAiCompatibleBackendTest {
                         {"choices":[{"message":{"role":"assistant","content":"done"},"finish_reason":"stop"}]}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("sys", List.of(toolResult), List.of());
+        backend.nextMessage("sys", List.of(toolResult), List.of(), true);
 
         mockServer.verify();
     }

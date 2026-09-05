@@ -20,7 +20,10 @@ import java.util.List;
  */
 public class AnthropicBackend implements AgentBackend {
 
-    private static final int MAX_OUTPUT_TOKENS = 4096;
+    // A hard backstop against a model ignoring the system prompt's brevity rules and
+    // producing a long prose report - 700 is generous for even a dozen key:value lines
+    // or several simultaneous tool calls (small JSON each), but cuts off an essay.
+    private static final int MAX_OUTPUT_TOKENS = 700;
     private static final String ANTHROPIC_VERSION = "2023-06-01";
 
     private final RestClient restClient;
@@ -35,8 +38,12 @@ public class AnthropicBackend implements AgentBackend {
         this.objectMapper = objectMapper;
     }
 
+    // toolsAllowed is unused here: Anthropic's Messages API has no JSON-mode field to
+    // conflict with tool use in the first place (unlike the OpenAI-compatible backend),
+    // and real Claude models follow the system prompt's JSON-output instruction
+    // reliably enough on their own that forcing tool_choice:"none" hasn't been needed.
     @Override
-    public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools) {
+    public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools, boolean toolsAllowed) {
         MessagesRequest request = new MessagesRequest(
                 model,
                 MAX_OUTPUT_TOKENS,

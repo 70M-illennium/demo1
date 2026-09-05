@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -83,7 +84,7 @@ class AgentControllerIntegrationTest {
     @Test
     @SuppressWarnings("unchecked")
     void ask_withNoToolCallNeeded_returnsTheBackendsAnswerDirectly() {
-        when(agentBackend.nextMessage(any(), any(), any()))
+        when(agentBackend.nextMessage(any(), any(), any(), anyBoolean()))
                 .thenReturn(new AgentMessage("assistant", "status: healthy", null, null));
 
         ResponseEntity<Map> response = restTemplate.exchange(
@@ -105,7 +106,7 @@ class AgentControllerIntegrationTest {
         AgentMessage toolCallMessage = new AgentMessage("assistant", null,
                 List.of(new AgentMessage.ToolCall("call-1", "get_recent_database_snapshots", "{\"limit\":1}")), null);
         AgentMessage finalAnswer = new AgentMessage("assistant", "database is healthy", null, null);
-        when(agentBackend.nextMessage(any(), any(), any())).thenReturn(toolCallMessage, finalAnswer);
+        when(agentBackend.nextMessage(any(), any(), any(), anyBoolean())).thenReturn(toolCallMessage, finalAnswer);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url("/api/agent/ask"), HttpMethod.POST,

@@ -13,9 +13,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pure unit test - no HTTP, no real backend. {@link AgentOrchestrator} now depends only
  * on the {@link AgentBackend} interface, so its own logic (tool dispatch, error
- * handling, the MAX_TURNS guard) is tested against a hand-scripted fake backend; the
- * wire-format translation for each real backend is covered separately in
- * {@code OpenAiCompatibleBackendTest} and {@code AnthropicBackendTest}.
+ * handling, the MAX_TURNS guard, and the extra no-tools finalize call) is tested
+ * against a hand-scripted fake backend; the wire-format translation for each real
+ * backend is covered separately in {@code OpenAiCompatibleBackendTest} and
+ * {@code AnthropicBackendTest}.
+ *
+ * <p>Every scenario below scripts one MORE response than the number of tool-bearing
+ * turns: whenever the backend returns a message with no tool calls, the orchestrator
+ * makes one extra "finalize" call (tools = empty) before returning - see {@code
+ * AgentOrchestrator.finalizeAnswer} - so the returned answer always comes from that
+ * last scripted response, not the one that ended the tool loop.
  */
 class AgentOrchestratorTest {
 
@@ -31,7 +38,7 @@ class AgentOrchestratorTest {
         }
 
         @Override
-        public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools) {
+        public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools, boolean toolsAllowed) {
             AgentMessage next = script.pollFirst();
             if (next == null) {
                 throw new IllegalStateException("test backend ran out of scripted responses");
@@ -74,18 +81,21 @@ class AgentOrchestratorTest {
     }
 
     @Test
-    void noToolCallNeeded_returnsTheModelsTextDirectly() {
-        ScriptedBackend backend = new ScriptedBackend().respond(textAnswer("all good"));
+    void noToolCallNeeded_stillMakesAFinalizeCallAndReturnsItsAnswer() {
+        ScriptedBackend backend = new ScriptedBackend()
+                .respond(textAnswer("draft - never returned"))
+                .respond(textAnswer("{\"status\":\"healthy\"}"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of());
 
-        assertThat(orchestrator.ask("is the database healthy?")).isEqualTo("all good");
+        assertThat(orchestrator.ask("is the database healthy?")).isEqualTo("{\"status\":\"healthy\"}");
     }
 
     @Test
-    void oneToolCall_dispatchesToTheMatchingBeanThenReturnsTheFinalAnswer() {
+    void oneToolCall_dispatchesToTheMatchingBeanThenReturnsTheFinalizedAnswer() {
         AgentTool tool = fakeTool("get_recent_database_snapshots", List.of(Map.of("reachable", true)));
         ScriptedBackend backend = new ScriptedBackend()
                 .respond(toolCall("call-1", "get_recent_database_snapshots", "{\"limit\":3}"))
+                .respond(textAnswer("draft - never returned"))
                 .respond(textAnswer("database is healthy"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of(tool));
 
@@ -96,6 +106,7 @@ class AgentOrchestratorTest {
     void unknownToolName_returnsAnErrorResultInsteadOfCrashingTheLoop() {
         ScriptedBackend backend = new ScriptedBackend()
                 .respond(toolCall("call-1", "not_a_real_tool", "{}"))
+                .respond(textAnswer("draft - never returned"))
                 .respond(textAnswer("I don't have that tool"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of());
 
@@ -127,6 +138,7 @@ class AgentOrchestratorTest {
         };
         ScriptedBackend backend = new ScriptedBackend()
                 .respond(toolCall("call-1", "broken_tool", "{}"))
+                .respond(textAnswer("draft - never returned"))
                 .respond(textAnswer("that tool failed"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of(broken));
 
@@ -138,6 +150,7 @@ class AgentOrchestratorTest {
         AgentTool tool = fakeTool("get_workload_summary", Map.of("queries", List.of()));
         ScriptedBackend backend = new ScriptedBackend()
                 .respond(toolCall("call-1", "get_workload_summary", "{}"))
+                .respond(textAnswer("draft - never returned"))
                 .respond(textAnswer("no slow queries"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of(tool));
 
@@ -145,14 +158,15 @@ class AgentOrchestratorTest {
     }
 
     @Test
-    void neverEndingToolUse_stopsAtMaxTurnsInsteadOfLoopingForever() {
+    void neverEndingToolUse_stopsAtMaxTurnsThenStillForcesAFinalAnswer() {
         AgentTool tool = fakeTool("get_recent_database_snapshots", List.of());
         ScriptedBackend backend = new ScriptedBackend();
         for (int i = 0; i < 8; i++) {
             backend.respond(toolCall("call-" + i, "get_recent_database_snapshots", "{}"));
         }
+        backend.respond(textAnswer("best effort answer from what was gathered"));
         AgentOrchestrator orchestrator = new AgentOrchestrator(backend, OBJECT_MAPPER, List.of(tool));
 
-        assertThat(orchestrator.ask("never finishes")).contains("stopped after");
+        assertThat(orchestrator.ask("never finishes")).isEqualTo("best effort answer from what was gathered");
     }
 }

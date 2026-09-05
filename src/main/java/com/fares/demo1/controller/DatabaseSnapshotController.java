@@ -2,6 +2,8 @@ package com.fares.demo1.controller;
 
 import com.fares.demo1.dto.DatabaseSnapshotResponseDTO;
 import com.fares.demo1.service.DatabaseSnapshotService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +31,13 @@ import java.util.function.Function;
 @RestController
 @RequestMapping("/api/database")
 @RequiredArgsConstructor
+@Tag(name = "Database", description = "Core MySQL health and performance snapshots - availability, connections, buffer pool, locking, storage")
 public class DatabaseSnapshotController {
 
     private final DatabaseSnapshotService databaseSnapshotService;
 
     @GetMapping("/snapshots")
+    @Operation(summary = "List recent database snapshots, newest first")
     public List<DatabaseSnapshotResponseDTO> recent(@RequestParam(defaultValue = "20") int limit) {
         int capped = Math.min(Math.max(limit, 1), 500);
         return databaseSnapshotService.recentSnapshots(capped).stream()
@@ -42,36 +46,43 @@ public class DatabaseSnapshotController {
     }
 
     @GetMapping("/snapshots/latest")
+    @Operation(summary = "Get the most recent database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO> latest() {
         return latestSection(Function.identity());
     }
 
     @GetMapping("/snapshots/latest/availability")
+    @Operation(summary = "Get just the availability section (reachable, latency, uptime) of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.Availability> availability() {
         return latestSection(DatabaseSnapshotResponseDTO::availability);
     }
 
     @GetMapping("/snapshots/latest/connections")
+    @Operation(summary = "Get just the connections section of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.Connections> connections() {
         return latestSection(DatabaseSnapshotResponseDTO::connections);
     }
 
     @GetMapping("/snapshots/latest/workload")
+    @Operation(summary = "Get just the workload section (questions/sec, slow queries) of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.Workload> workload() {
         return latestSection(DatabaseSnapshotResponseDTO::workload);
     }
 
     @GetMapping("/snapshots/latest/bufferPool")
+    @Operation(summary = "Get just the InnoDB buffer pool section of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.BufferPool> bufferPool() {
         return latestSection(DatabaseSnapshotResponseDTO::bufferPool);
     }
 
     @GetMapping("/snapshots/latest/locking")
+    @Operation(summary = "Get just the locking and deadlocks section of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.Locking> locking() {
         return latestSection(DatabaseSnapshotResponseDTO::locking);
     }
 
     @GetMapping("/snapshots/latest/storage")
+    @Operation(summary = "Get just the storage size section of the latest database snapshot")
     public ResponseEntity<DatabaseSnapshotResponseDTO.Storage> storage() {
         return latestSection(DatabaseSnapshotResponseDTO::storage);
     }

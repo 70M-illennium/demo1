@@ -2,6 +2,8 @@ package com.fares.demo1.controller;
 
 import com.fares.demo1.dto.ActivitySnapshotResponseDTO;
 import com.fares.demo1.service.ActivitySnapshotService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,11 +27,13 @@ import java.util.function.Function;
 @RestController
 @RequestMapping("/api/activity")
 @RequiredArgsConstructor
+@Tag(name = "Activity", description = "JVM and HTTP activity of the monitor service itself, not the monitored database")
 public class ActivitySnapshotController {
 
     private final ActivitySnapshotService activitySnapshotService;
 
     @GetMapping("/snapshots")
+    @Operation(summary = "List recent activity snapshots, newest first")
     public List<ActivitySnapshotResponseDTO> recent(@RequestParam(defaultValue = "20") int limit) {
         int capped = Math.min(Math.max(limit, 1), 500);
         return activitySnapshotService.recentSnapshots(capped).stream()
@@ -38,16 +42,19 @@ public class ActivitySnapshotController {
     }
 
     @GetMapping("/snapshots/latest")
+    @Operation(summary = "Get the most recent activity snapshot")
     public ResponseEntity<ActivitySnapshotResponseDTO> latest() {
         return latestSection(Function.identity());
     }
 
     @GetMapping("/snapshots/latest/http")
+    @Operation(summary = "Get just the HTTP request section of the latest activity snapshot")
     public ResponseEntity<ActivitySnapshotResponseDTO.Http> http() {
         return latestSection(ActivitySnapshotResponseDTO::http);
     }
 
     @GetMapping("/snapshots/latest/jvm")
+    @Operation(summary = "Get just the JVM (heap/memory) section of the latest activity snapshot")
     public ResponseEntity<ActivitySnapshotResponseDTO.Jvm> jvm() {
         return latestSection(ActivitySnapshotResponseDTO::jvm);
     }

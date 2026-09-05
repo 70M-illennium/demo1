@@ -5,6 +5,8 @@ import com.fares.demo1.dto.MonitorEventResponseDTO;
 import com.fares.demo1.model.MonitorEventEntity;
 import com.fares.demo1.repo.MonitorEventRepo;
 import com.fares.demo1.service.MonitorEventService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,12 +40,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/events")
 @RequiredArgsConstructor
+@Tag(name = "Events", description = "Problems the monitor has flagged, plus admin actions on an existing event")
 public class EventController {
 
     private final MonitorEventRepo monitorEventRepo;
     private final MonitorEventService monitorEventService;
 
     @GetMapping
+    @Operation(summary = "List recent events, open or resolved, newest first")
     public List<MonitorEventResponseDTO> recent(@RequestParam(defaultValue = "50") int limit) {
         int capped = Math.min(Math.max(limit, 1), 500);
         return monitorEventRepo.findByOrderByOccurredAtDesc(PageRequest.of(0, capped)).stream()
@@ -52,6 +56,7 @@ public class EventController {
     }
 
     @GetMapping("/active")
+    @Operation(summary = "List events that are still unresolved, most severe first")
     public List<MonitorEventResponseDTO> active() {
         return monitorEventRepo.findByResolvedAtIsNullOrderByOccurredAtDesc().stream()
                 .sorted(Comparator.comparing(MonitorEventEntity::getSeverity).reversed())
@@ -60,6 +65,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}/ack")
+    @Operation(summary = "Acknowledge an event without resolving it (admin only)")
     public MonitorEventResponseDTO acknowledge(@PathVariable Long id,
                                                 @RequestBody(required = false) AckEventRequest body) {
         String note = body != null ? body.note() : null;
@@ -67,6 +73,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}/resolve")
+    @Operation(summary = "Force-resolve an event by hand (admin only)")
     public MonitorEventResponseDTO resolve(@PathVariable Long id) {
         return MonitorEventResponseDTO.from(monitorEventService.forceResolve(id));
     }

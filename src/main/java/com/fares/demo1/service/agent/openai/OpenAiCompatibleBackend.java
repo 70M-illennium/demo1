@@ -16,7 +16,10 @@ import java.util.List;
  */
 public class OpenAiCompatibleBackend implements AgentBackend {
 
-    private static final int MAX_OUTPUT_TOKENS = 4096;
+    // A hard backstop against a model ignoring the system prompt's brevity rules and
+    // producing a long prose report - 700 is generous for even a dozen key:value lines
+    // or several simultaneous tool calls (small JSON each), but cuts off an essay.
+    private static final int MAX_OUTPUT_TOKENS = 700;
 
     private final RestClient restClient;
     private final String model;
@@ -30,16 +33,27 @@ public class OpenAiCompatibleBackend implements AgentBackend {
     }
 
     @Override
-    public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools) {
+    public AgentMessage nextMessage(String systemPrompt, List<AgentMessage> history, List<ToolDefinition> tools, boolean toolsAllowed) {
         List<ChatMessage> messages = new ArrayList<>(history.size() + 1);
         messages.add(new ChatMessage("system", systemPrompt, null, null));
         history.forEach(m -> messages.add(toWireMessage(m)));
 
+        // The tool definitions are always sent, even on the finalize call - some models'
+        // chat templates render earlier tool-result messages differently (or drop them
+        // outright) when the request declares no tools at all, silently making the model
+        // "forget" everything the tools returned. Instead, tool_choice:"none" disables
+        // calling a tool THIS turn while keeping the declarations (and template
+        // rendering) consistent; JSON mode is then safe to enable, since offering it
+        // together with an actually-available tool choice is what let the model fake a
+        // tool call as plain-text JSON instead of using the real tool_calls mechanism.
+        List<ChatRequest.Tool> wireTools = tools.isEmpty() ? null : tools.stream().map(OpenAiCompatibleBackend::toWireTool).toList();
         ChatRequest request = new ChatRequest(
                 model,
                 messages,
-                tools.stream().map(OpenAiCompatibleBackend::toWireTool).toList(),
-                MAX_OUTPUT_TOKENS);
+                wireTools,
+                MAX_OUTPUT_TOKENS,
+                toolsAllowed ? null : ChatRequest.ResponseFormat.JSON_OBJECT,
+                (!toolsAllowed && wireTools != null) ? "none" : null);
 
         ChatResponse response = restClient.post()
                 .uri("/v1/chat/completions")

@@ -14,6 +14,8 @@ import com.fares.demo1.service.HostSystemSnapshotService;
 import com.fares.demo1.service.RetentionService;
 import com.fares.demo1.service.SecurityCheckService;
 import com.fares.demo1.service.WorkloadSnapshotService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin", description = "Admin-only actions that bypass the normal schedule or config file - needs the ADMIN role except the two GET endpoints")
 public class AdminController {
 
     private final DatabaseSnapshotService databaseSnapshotService;
@@ -68,6 +71,7 @@ public class AdminController {
      * change take effect immediately instead of waiting for the next cycle.
      */
     @PostMapping("/collect")
+    @Operation(summary = "Run every collector right now instead of waiting for the next scheduled cycle, then re-evaluate thresholds")
     public String collectNow() {
         databaseSnapshotService.capture();
         hostSystemSnapshotService.capture();
@@ -83,6 +87,7 @@ public class AdminController {
     }
 
     @PostMapping("/purge")
+    @Operation(summary = "Run the retention purge right now instead of waiting for its schedule")
     public String purgeNow() {
         retentionService.purge();
         log.info("admin-triggered retention purge complete");
@@ -90,6 +95,7 @@ public class AdminController {
     }
 
     @GetMapping("/thresholds")
+    @Operation(summary = "Get the current health-check threshold values")
     public HealthCheckProperties currentThresholds() {
         // Returning the live @ConfigurationProperties bean directly is fine here - it's
         // a plain POJO of numbers (not an entity, nothing lazy, nothing sensitive), so
@@ -123,6 +129,7 @@ public class AdminController {
      * later field in the same request turns out invalid.
      */
     @PatchMapping("/thresholds")
+    @Operation(summary = "Change one or more health-check thresholds live, no redeploy needed")
     public HealthCheckProperties updateThresholds(@RequestBody UpdateThresholdsRequest body) {
         validate(body);
 
@@ -179,6 +186,7 @@ public class AdminController {
      * dynamic auth check (step 3) are wired up to consult this registry.
      */
     @GetMapping("/policies")
+    @Operation(summary = "Get the current cache/protection policy flags for every metric key")
     public Map<String, EndpointPolicy> policies() {
         return endpointPolicyRegistry.all();
     }
@@ -191,6 +199,7 @@ public class AdminController {
      * registry every client reads.
      */
     @PatchMapping("/policies/{key}")
+    @Operation(summary = "Change one metric's cache/protection flags live, no redeploy needed")
     public EndpointPolicy updatePolicy(@PathVariable String key, @RequestBody UpdatePolicyRequest body) {
         if (!endpointPolicyRegistry.exists(key)) {
             throw new EntityNotFoundException("no such metric key: " + key);

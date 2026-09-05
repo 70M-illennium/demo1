@@ -49,7 +49,7 @@ class AnthropicBackendTest {
                         {"content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn"}
                         """, MediaType.APPLICATION_JSON));
 
-        AgentMessage answer = backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        AgentMessage answer = backend.nextMessage("be helpful", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         assertThat(answer.content()).isEqualTo("ok");
         mockServer.verify();
@@ -67,7 +67,7 @@ class AnthropicBackendTest {
                         {"content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn"}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool));
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(tool), true);
 
         mockServer.verify();
     }
@@ -81,7 +81,7 @@ class AnthropicBackendTest {
                         "stop_reason":"tool_use"}
                         """, MediaType.APPLICATION_JSON));
 
-        AgentMessage answer = backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of());
+        AgentMessage answer = backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null)), List.of(), true);
 
         assertThat(answer.content()).isNull();
         assertThat(answer.toolCalls()).hasSize(1);
@@ -113,7 +113,7 @@ class AnthropicBackendTest {
                         {"content":[{"type":"text","text":"done"}],"stop_reason":"end_turn"}
                         """, MediaType.APPLICATION_JSON));
 
-        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null), assistantCall, toolResult), List.of());
+        backend.nextMessage("sys", List.of(new AgentMessage("user", "hi", null, null), assistantCall, toolResult), List.of(), true);
 
         mockServer.verify();
     }
@@ -139,7 +139,7 @@ class AnthropicBackendTest {
 
         backend.nextMessage("sys",
                 List.of(new AgentMessage("user", "hi", null, null), assistantCall, result1, result2),
-                List.of());
+                List.of(), true);
 
         mockServer.verify();
     }

@@ -3,6 +3,8 @@ package com.fares.demo1.controller;
 import com.fares.demo1.dto.AskAgentRequest;
 import com.fares.demo1.dto.AskAgentResponse;
 import com.fares.demo1.service.agent.AgentOrchestrator;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,11 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/agent")
 @RequiredArgsConstructor
+@Tag(name = "AI Agent", description = "Ask the AI health-assessment agent a plain-English question about the monitored database")
 public class AgentController {
 
     private final AgentOrchestrator agentOrchestrator;
 
     @PostMapping("/ask")
+    @Operation(summary = "Ask the AI agent a question about the monitored database's health, using only real data from its own tools")
     public AskAgentResponse ask(@RequestBody AskAgentRequest body) {
         if (body == null || body.question() == null || body.question().isBlank()) {
             throw new IllegalArgumentException("question must not be blank");
