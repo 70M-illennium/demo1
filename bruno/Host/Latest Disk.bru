@@ -1,0 +1,15 @@
+meta {
+  name: Latest Disk
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/host/snapshots/latest/disk
+  body: none
+  auth: none
+}
+
+docs {
+  Just the disk section of the latest host snapshot.
+}

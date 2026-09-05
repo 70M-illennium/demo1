@@ -1,0 +1,15 @@
+meta {
+  name: Findings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/security/findings
+  body: none
+  auth: none
+}
+
+docs {
+  Security findings from the most recent check cycle, most severe first. Empty list means nothing was found.
+}

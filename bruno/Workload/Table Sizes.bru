@@ -1,0 +1,15 @@
+meta {
+  name: Table Sizes
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/workload/tables
+  body: none
+  auth: none
+}
+
+docs {
+  Per-table sizes, largest first (updated every 10 minutes).
+}

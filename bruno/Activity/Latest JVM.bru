@@ -1,0 +1,15 @@
+meta {
+  name: Latest JVM
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/activity/snapshots/latest/jvm
+  body: none
+  auth: none
+}
+
+docs {
+  Just the JVM (heap/memory) section of the latest activity snapshot.
+}

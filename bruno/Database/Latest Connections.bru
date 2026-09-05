@@ -1,0 +1,15 @@
+meta {
+  name: Latest Connections
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/database/snapshots/latest/connections
+  body: none
+  auth: none
+}
+
+docs {
+  Just the connections section of the latest database snapshot.
+}

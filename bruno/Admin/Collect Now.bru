@@ -1,0 +1,20 @@
+meta {
+  name: Collect Now
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/admin/collect
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+docs {
+  Run every collector right now instead of waiting for the next scheduled cycle, then re-evaluate thresholds.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: Ask Agent
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/agent/ask
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+body:json {
+  {
+    "question": "is the database healthy?"
+  }
+}
+
+docs {
+  Ask the AI health-assessment agent a plain-English question about the monitored
+  database, using only real data from its own tools. Try also: "what queries are
+  running right now?", "any security issues?", "why is it slow?".
+
+  Rate-limited to 5 requests/minute, separate from the rest of the API. First
+  response can take 10-30s depending on the configured backend.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Latest Snapshot
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/database/snapshots/latest
+  body: none
+  auth: none
+}
+
+docs {
+  Get the most recent database snapshot (204 if nothing has been collected yet).
+}

@@ -1,0 +1,31 @@
+meta {
+  name: Update Thresholds
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/thresholds
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+body:json {
+  {
+    "diskWarnPercent": 85
+  }
+}
+
+docs {
+  Change one or more health-check thresholds live, no redeploy needed - PATCH semantics,
+  send only the fields you want to change. All fields (all optional):
+  diskWarnPercent, diskCritPercent, longTransactionSeconds, slowQueryRatePerMin,
+  tmpDiskTableRatePerMin, bufferPoolHitRatioWarnPercent, bufferPoolHitRatioCritPercent,
+  connectionWarnPercent, connectionCritPercent, latencySigmaK, collectionGapSeconds,
+  baselineWindow, openAfter, resolveAfter.
+}

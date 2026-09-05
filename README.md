@@ -77,6 +77,10 @@ option above.
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html` - browse every endpoint without
   reading controller source.
+- Bruno collection: the `bruno/` folder has a ready-to-use request for every endpoint,
+  grouped the same way as Swagger. Open [Bruno](https://www.usebruno.com), "Open
+  Collection", select the `bruno` folder, then pick the "Local" environment (already
+  points at `http://localhost:8080` with the default admin credentials).
 - Every `GET /api/**` endpoint is a read; some require login depending on live policy
   (see `EndpointPolicyRegistry` / `GET /api/admin/policies`).
 - Every non-GET `/api/**` endpoint (admin actions, acknowledging events, asking the AI

@@ -1,0 +1,15 @@
+meta {
+  name: Latest Memory
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/host/snapshots/latest/memory
+  body: none
+  auth: none
+}
+
+docs {
+  Just the memory section of the latest host snapshot.
+}

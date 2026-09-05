@@ -1,0 +1,20 @@
+meta {
+  name: Purge Now
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/admin/purge
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+docs {
+  Run the retention purge right now instead of waiting for its schedule.
+}

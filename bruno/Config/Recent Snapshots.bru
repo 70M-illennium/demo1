@@ -1,0 +1,19 @@
+meta {
+  name: Recent Snapshots
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/config/snapshots?limit=20
+  body: none
+  auth: none
+}
+
+params:query {
+  limit: 20
+}
+
+docs {
+  List recent config-change snapshots, newest first - a new row only exists when something actually changed.
+}

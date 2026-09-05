@@ -1,0 +1,32 @@
+meta {
+  name: Update Policy
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/policies/:key
+  body: json
+  auth: basic
+}
+
+params:path {
+  key: database.latest
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+body:json {
+  {
+    "cached": true,
+    "protectedAccess": false
+  }
+}
+
+docs {
+  Change one metric's cache/protection flags live, no redeploy needed. Set :key to a real
+  metric key from "Get Policies" first (e.g. database.latest). Both body fields are optional.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Latest Snapshot
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/activity/snapshots/latest
+  body: none
+  auth: none
+}
+
+docs {
+  Get the most recent activity snapshot.
+}

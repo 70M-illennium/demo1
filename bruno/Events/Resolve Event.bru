@@ -1,0 +1,24 @@
+meta {
+  name: Resolve Event
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/events/:id/resolve
+  body: none
+  auth: basic
+}
+
+params:path {
+  id: 1
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+docs {
+  Force-resolve an event by hand (admin only). Set :id to a real event id first.
+}

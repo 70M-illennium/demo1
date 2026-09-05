@@ -1,0 +1,15 @@
+meta {
+  name: Latest Workload
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/database/snapshots/latest/workload
+  body: none
+  auth: none
+}
+
+docs {
+  Just the workload section (questions/sec, slow queries) of the latest database snapshot.
+}

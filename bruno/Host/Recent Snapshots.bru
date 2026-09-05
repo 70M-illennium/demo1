@@ -1,0 +1,19 @@
+meta {
+  name: Recent Snapshots
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/host/snapshots?limit=20
+  body: none
+  auth: none
+}
+
+params:query {
+  limit: 20
+}
+
+docs {
+  List recent host snapshots, newest first.
+}

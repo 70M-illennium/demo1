@@ -1,0 +1,30 @@
+meta {
+  name: Acknowledge Event
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/events/:id/ack
+  body: json
+  auth: basic
+}
+
+params:path {
+  id: 1
+}
+
+auth:basic {
+  username: {{adminUser}}
+  password: {{adminPassword}}
+}
+
+body:json {
+  {
+    "note": "investigating"
+  }
+}
+
+docs {
+  Acknowledge an event without resolving it (admin only). Set :id to a real event id first.
+}

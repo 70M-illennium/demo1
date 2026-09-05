@@ -1,0 +1,15 @@
+meta {
+  name: Active Events
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/events/active
+  body: none
+  auth: none
+}
+
+docs {
+  Events that are still unresolved, most severe first.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Live Sessions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workload/sessions
+  body: none
+  auth: none
+}
+
+docs {
+  Non-idle sessions as of the last scheduled snapshot (up to 60s old), longest-running first.
+}

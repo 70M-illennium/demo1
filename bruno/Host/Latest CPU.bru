@@ -1,0 +1,15 @@
+meta {
+  name: Latest CPU
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/host/snapshots/latest/cpu
+  body: none
+  auth: none
+}
+
+docs {
+  Just the CPU section of the latest host snapshot.
+}

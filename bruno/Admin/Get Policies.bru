@@ -1,0 +1,15 @@
+meta {
+  name: Get Policies
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/admin/policies
+  body: none
+  auth: none
+}
+
+docs {
+  Get the current cache/protection policy flags for every metric key. Public read, per SecurityConfig.
+}

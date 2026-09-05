@@ -1,0 +1,15 @@
+meta {
+  name: Latest Config
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/config/snapshots/latest
+  body: none
+  auth: none
+}
+
+docs {
+  Get the current tracked configuration values (name -> value).
+}

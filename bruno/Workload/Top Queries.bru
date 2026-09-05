@@ -1,0 +1,15 @@
+meta {
+  name: Top Queries
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/workload/queries
+  body: none
+  auth: none
+}
+
+docs {
+  Top query digests by total execution time, slowest first (last collection cycle).
+}

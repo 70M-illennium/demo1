@@ -1,0 +1,19 @@
+meta {
+  name: Recent Events
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/events?limit=50
+  body: none
+  auth: none
+}
+
+params:query {
+  limit: 50
+}
+
+docs {
+  Recent events, open or resolved, newest first.
+}
