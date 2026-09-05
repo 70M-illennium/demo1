@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientException;
 
 /**
  * Maps a couple of expected failure cases to a proper HTTP status instead of the
@@ -36,5 +37,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * The AI agent's configured backend (Ollama/OpenAI/Anthropic) didn't respond - a
+     * downstream dependency failure, not something wrong with the client's request.
+     */
+    @ExceptionHandler(RestClientException.class)
+    public ProblemDetail handleBackendUnavailable(RestClientException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY,
+                "the AI agent's backend did not respond: " + ex.getMessage());
     }
 }

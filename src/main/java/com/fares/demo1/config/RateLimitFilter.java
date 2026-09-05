@@ -25,24 +25,35 @@ import java.util.concurrent.ConcurrentMap;
  * tokens/minute (a "greedy" refill: tokens trickle back continuously rather than all at
  * once at the top of the minute). A request that finds an empty bucket gets HTTP 429
  * (RFC 6585) with a {@code Retry-After} header instead of being served.
+ *
+ * <p>{@code /api/agent/**} gets its own, much stricter bucket ({@link #AGENT_CAPACITY} /
+ * {@link #AGENT_REFILL_PER_MINUTE}) tracked separately per client from the general one -
+ * each call there can mean several database reads plus a full LLM round trip, real
+ * cost/latency the rest of the API doesn't have, so it shouldn't share a budget with (or
+ * let a burst of agent questions starve) every other endpoint.
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int CAPACITY = 120;
     private static final int REFILL_PER_MINUTE = 120;
+    private static final int AGENT_CAPACITY = 5;
+    private static final int AGENT_REFILL_PER_MINUTE = 5;
 
     private final ConcurrentMap<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                      FilterChain chain) throws ServletException, IOException {
-        if (!request.getRequestURI().startsWith("/api/")) {
+        String uri = request.getRequestURI();
+        if (!uri.startsWith("/api/")) {
             chain.doFilter(request, response);
             return;
         }
 
-        Bucket bucket = buckets.computeIfAbsent(clientKey(request), key -> newBucket());
+        boolean isAgentEndpoint = uri.startsWith("/api/agent/");
+        String key = clientKey(request) + (isAgentEndpoint ? ":agent" : "");
+        Bucket bucket = buckets.computeIfAbsent(key, k -> isAgentEndpoint ? newAgentBucket() : newBucket());
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
@@ -60,6 +71,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static Bucket newBucket() {
         Bandwidth limit = Bandwidth.classic(CAPACITY, Refill.greedy(REFILL_PER_MINUTE, Duration.ofMinutes(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    private static Bucket newAgentBucket() {
+        Bandwidth limit = Bandwidth.classic(AGENT_CAPACITY, Refill.greedy(AGENT_REFILL_PER_MINUTE, Duration.ofMinutes(1)));
         return Bucket.builder().addLimit(limit).build();
     }
 }

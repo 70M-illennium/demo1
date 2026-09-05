@@ -71,6 +71,10 @@
             <artifactId>bucket4j_jdk17-core</artifactId>
             <version>8.19.0</version>
         </dependency>
+        <!-- the AI health-assessment agent (bonus) needs no extra dependency now: it
+             talks to a local Ollama server over its OpenAI-compatible REST endpoint
+             using spring-boot-starter-restclient (already present above), not a
+             vendor SDK - see service/agent/AgentOrchestrator's javadoc for why. -->
         <dependency>
             <!-- used directly (no spring-boot-starter-cache / @Cacheable): service/MetricCache
                  needs to consult EndpointPolicyRegistry at request time to decide whether to

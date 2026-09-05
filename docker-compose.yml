@@ -79,6 +79,12 @@ services:
       # the one ADMIN account for non-GET /api/** endpoints
       MONITOR_ADMIN_USERNAME: ${MONITOR_ADMIN_USERNAME}
       MONITOR_ADMIN_PASSWORD: ${MONITOR_ADMIN_PASSWORD}
+      # AI health-assessment agent (bonus): self-hosted via Ollama, no key needed.
+      # Not wired for container-to-host use yet - the CLI currently runs as a separate
+      # local process (./mvnw spring-boot:run -Dspring-boot.run.profiles=cli), reaching
+      # a natively-installed Ollama on localhost:11434 directly. If the CLI ever runs
+      # from inside this app container instead, OLLAMA_BASE_URL would need to point at
+      # host.docker.internal, not localhost - not set up since nothing needs it yet.
 
   # --- optional workload generator; only with `docker compose --profile demo up` ---
   loadgen:
